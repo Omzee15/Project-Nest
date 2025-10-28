@@ -8,12 +8,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/generative-ai-go/genai"
-	"github.com/google/uuid"
 	"lucid-lists-backend/internal/models"
 	"lucid-lists-backend/internal/services"
 	"lucid-lists-backend/internal/utils"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/generative-ai-go/genai"
+	"github.com/google/uuid"
 	"google.golang.org/api/option"
 )
 
@@ -169,7 +170,7 @@ func (h *AIProjectCreationHandler) parseProjectContentWithAI(content string) (*P
 	defer client.Close()
 
 	// Get the model
-	model := client.GenerativeModel("gemini-1.5-flash")
+	model := client.GenerativeModel("gemini-2.5-flash")
 
 	// Create system prompt for parsing
 	systemPrompt := `You are a project management assistant. Parse the following project description and extract structured information in JSON format.
