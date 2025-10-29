@@ -1,0 +1,23 @@
+{
+  "name": "Solarized Light",
+  "type": "light",
+  "colors": {
+    "background": "#F5EFE7",
+    "foreground": "#3E2723",
+    "card": "#E8DFD0",
+    "cardForeground": "#3E2723",
+    "primary": "#9B8F5E",
+    "primaryForeground": "#FFFFFF",
+    "secondary": "#EBE3D5",
+    "secondaryForeground": "#3E2723",
+    "muted": "#D9CDBF",
+    "mutedForeground": "#8B7355",
+    "accent": "#9B8F5E",
+    "accentForeground": "#FFFFFF",
+    "border": "#D9CDBF",
+    "input": "#E8DFD0",
+    "ring": "#9B8F5E",
+    "destructive": "#C4756C",
+    "destructiveForeground": "#FFFFFF"
+  }
+}

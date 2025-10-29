@@ -1,0 +1,23 @@
+{
+  "name": "ProjectNest Dark",
+  "type": "dark",
+  "colors": {
+    "background": "220 13% 18%",
+    "foreground": "210 17% 82%",
+    "card": "215 14% 22%",
+    "cardForeground": "210 17% 82%",
+    "primary": "210 17% 82%",
+    "primaryForeground": "220 13% 18%",
+    "secondary": "212 12% 27%",
+    "secondaryForeground": "210 17% 82%",
+    "muted": "215 14% 24%",
+    "mutedForeground": "213 14% 55%",
+    "accent": "212 12% 27%",
+    "accentForeground": "210 17% 82%",
+    "border": "212 12% 27%",
+    "input": "212 12% 27%",
+    "ring": "210 17% 82%",
+    "destructive": "0 70% 35%",
+    "destructiveForeground": "210 17% 82%"
+  }
+}

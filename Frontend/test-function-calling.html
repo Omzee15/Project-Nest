@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Function Calling Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .log {
+            background: #333;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .success {
+            color: #00aa00;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Gemini Function Calling Test</h1>
+    
+    <div class="container">
+        <h2>Test Controls</h2>
+        <button onclick="testBasicFunctionCalling()">Test Basic Function Calling</button>
+        <button onclick="testConfirmationFlow()">Test Confirmation Flow</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="container">
+        <h2>Test Log</h2>
+        <div id="log" class="log">Ready to test function calling...\n</div>
+    </div>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+
+        // API Key (you can replace this with your actual key)
+        const API_KEY = 'AIzaSyAjCLlJHuJymK3q94RRJvGk52qIlBXAUwg';
+        const genAI = new GoogleGenerativeAI(API_KEY);
+
+        // Logging function
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Define the project creation function declaration
+        const createProjectFunctionDeclaration = {
+            name: 'create_project',
+            description: 'Creates a new project with tasks, lists, and additional components. Use this when the user asks to create, build, or set up a project.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    project_name: {
+                        type: 'string',
+                        description: 'A clear, concise name for the project'
+                    },
+                    project_description: {
+                        type: 'string',
+                        description: 'A brief description of what the project is about'
+                    },
+                    lists: {
+                        type: 'array',
+                        description: 'Array of task lists/categories',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                name: {
+                                    type: 'string',
+                                    description: 'Name of the task list'
+                                },
+                                tasks: {
+                                    type: 'array',
+                                    description: 'Tasks within this list',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            title: {
+                                                type: 'string',
+                                                description: 'Task title'
+                                            },
+                                            description: {
+                                                type: 'string',
+                                                description: 'Task description'
+                                            }
+                                        },
+                                        required: ['title']
+                                    }
+                                }
+                            },
+                            required: ['name', 'tasks']
+                        }
+                    },
+                    flowchart: {
+                        type: 'string',
+                        description: 'Mermaid flowchart script if needed'
+                    },
+                    database_schema: {
+                        type: 'string',
+                        description: 'Database schema description if needed'
+                    }
+                },
+                required: ['project_name', 'project_description', 'lists']
+            }
+        };
+
+        // Test basic function calling
+        window.testBasicFunctionCalling = async function() {
+            try {
+                log('🚀 Starting Basic Function Calling Test...');
+                log('📝 Initializing Gemini model with function declarations...');
+
+                const model = genAI.getGenerativeModel({ 
+                    model: 'gemini-2.5-flash',
+                    tools: [{
+                        functionDeclarations: [createProjectFunctionDeclaration]
+                    }]
+                });
+
+                const testPrompt = `I want to create a project for building a mobile task management app called "TaskMaster Pro". 
+
+The app should include:
+- User authentication
+- Task creation and editing
+- Priority levels and due dates
+- Team collaboration features
+- Progress tracking
+- Notifications
+
+Please organize this into phases like Planning, Development, Testing, and Deployment with specific tasks for each phase.
+
+Create the complete project structure for me.`;
+
+                log('📨 Sending request to Gemini...');
+                log(`💬 Prompt: "${testPrompt.substring(0, 100)}..."`);
+
+                const result = await model.generateContent(testPrompt);
+                const response = result.response;
+
+                log('✅ Response received!');
+
+                // Check for function calls
+                const functionCalls = response.functionCalls?.();
+                
+                if (functionCalls && functionCalls.length > 0) {
+                    log(`🎉 SUCCESS: ${functionCalls.length} function call(s) detected!`, 'success');
+                    
+                    functionCalls.forEach((functionCall, index) => {
+                        log(`🔧 Function ${index + 1}: ${functionCall.name}`);
+                        log(`📋 Arguments: ${JSON.stringify(functionCall.args, null, 2)}`);
+                        
+                        // Simulate function execution
+                        const mockResult = {
+                            success: true,
+                            project_id: 'proj_' + Date.now(),
+                            message: `Project "${functionCall.args.project_name}" created successfully`
+                        };
+                        log(`✅ Mock execution result: ${JSON.stringify(mockResult, null, 2)}`, 'success');
+                    });
+                } else {
+                    log('❌ NO FUNCTION CALLS DETECTED', 'error');
+                    log(`📄 Direct response instead: ${response.text()}`);
+                }
+
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                log(`🔍 Full error: ${JSON.stringify(error, null, 2)}`, 'error');
+            }
+        };
+
+        // Test confirmation flow
+        window.testConfirmationFlow = async function() {
+            try {
+                log('\n🔄 Starting Confirmation Flow Test...');
+
+                const model = genAI.getGenerativeModel({ 
+                    model: 'gemini-2.5-flash',
+                    tools: [{
+                        functionDeclarations: [createProjectFunctionDeclaration]
+                    }]
+                });
+
+                // Step 1: Initial project idea
+                log('👤 Step 1: User mentions project idea...');
+                const conversation = [
+                    {
+                        role: 'user',
+                        parts: [{ text: 'I want to build an e-commerce website for selling handmade crafts. It should have product listings, shopping cart, payment processing, and user accounts.' }]
+                    }
+                ];
+
+                let result = await model.generateContent(conversation);
+                let response = result.response.text();
+                log(`🤖 AI Response 1: ${response}`);
+
+                // Step 2: User confirms
+                conversation.push({
+                    role: 'model',
+                    parts: [{ text: response }]
+                });
+
+                conversation.push({
+                    role: 'user',
+                    parts: [{ text: 'Yes, please go ahead and create the complete project structure for this e-commerce website.' }]
+                });
+
+                log('👤 Step 2: User confirms project creation...');
+                
+                result = await model.generateContent(conversation);
+                response = result.response;
+
+                const functionCalls = response.functionCalls?.();
+                
+                if (functionCalls && functionCalls.length > 0) {
+                    log('🎉 SUCCESS: Function call triggered after confirmation!', 'success');
+                    
+                    functionCalls.forEach((functionCall, index) => {
+                        log(`🔧 Function ${index + 1}: ${functionCall.name}`);
+                        log(`📋 Arguments: ${JSON.stringify(functionCall.args, null, 2)}`);
+                    });
+                } else {
+                    log('❌ NO FUNCTION CALL after confirmation', 'error');
+                    log(`📄 Response: ${response.text()}`);
+                }
+
+            } catch (error) {
+                log(`❌ ERROR in confirmation flow: ${error.message}`, 'error');
+            }
+        };
+
+        // Clear log function
+        window.clearLog = function() {
+            document.getElementById('log').innerHTML = 'Log cleared...\n';
+        };
+
+        log('✅ Test environment initialized. Click buttons to run tests.');
+
+    </script>
+</body>
+</html>

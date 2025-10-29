@@ -1,0 +1,634 @@
+import { ListRequest, TaskRequest, ProjectWithLists } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+export interface AIMessage {
+  id: string;
+  content: string;
+  type: 'user' | 'ai';
+  timestamp: Date;
+  functionCalls?: FunctionCall[];
+  functionResults?: FunctionCallResult[];
+}
+
+export interface FunctionCall {
+  name: string;
+  parameters: any;
+}
+
+export class EnhancedAIService {
+  private genAI: GoogleGenerativeAI | null = null;
+  private model: any = null;
+  private projectUid: string;
+  private currentProjectData: ProjectWithLists | null = null;
+
+  constructor(projectUid: string) {
+    console.log('🏗️ [EnhancedAI] Constructor called with projectUid:', projectUid);
+    this.projectUid = projectUid;
+    this.initializeAI();
+  }
+
+  private async initializeAI() {
+    console.log('🚀 [EnhancedAI] initializeAI started');
+    try {
+      console.log('🔑 [EnhancedAI] Checking for VITE_GEMINI_API_KEY...');
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      console.log('🔑 [EnhancedAI] API Key exists:', !!apiKey);
+      console.log('🔑 [EnhancedAI] API Key length:', apiKey?.length || 0);
+      
+      if (!apiKey) {
+        console.error('❌ [EnhancedAI] No API key found in environment');
+        throw new Error('Gemini API key not found');
+      }
+
+      console.log('📦 [EnhancedAI] Creating GoogleGenerativeAI instance...');
+      this.genAI = new GoogleGenerativeAI(apiKey);
+      console.log('✅ [EnhancedAI] GoogleGenerativeAI instance created');
+      
+      console.log('🤖 [EnhancedAI] Getting generative model...');
+      console.log('📋 [EnhancedAI] Number of function schemas:', FUNCTION_SCHEMAS.length);
+      
+      this.model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction: FUNCTION_CALLING_SYSTEM_PROMPT,
+        tools: [{
+          functionDeclarations: FUNCTION_SCHEMAS as any
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.8,
+          maxOutputTokens: 2048,
+        },
+      });
+      console.log('✅ [EnhancedAI] Generative model created');
+
+      console.log('✅ [EnhancedAI] Enhanced AI Service initialized successfully');
+    } catch (error) {
+      console.error('❌ [EnhancedAI] Failed to initialize Enhanced AI Service:', error);
+      console.error('❌ [EnhancedAI] Error details:', error instanceof Error ? error.message : error);
+      console.error('❌ [EnhancedAI] Error stack:', error instanceof Error ? error.stack : 'No stack');
+      throw error;
+    }
+  }
+
+  async sendMessage(message: string): Promise<AIMessage> {
+    console.log('🚀 [EnhancedAI] sendMessage called with:', message);
+    
+    if (!this.model) {
+      console.error('❌ [EnhancedAI] Model not initialized');
+      throw new Error('AI model not initialized');
+    }
+
+    try {
+      console.log('📝 [EnhancedAI] Starting chat session...');
+      // Start chat session
+      const chat = this.model.startChat({
+        history: []
+      });
+      console.log('✅ [EnhancedAI] Chat session created');
+
+      // Send message
+      console.log('📤 [EnhancedAI] Sending message to AI...');
+      const result = await chat.sendMessage(message);
+      console.log('✅ [EnhancedAI] Message sent, getting response...');
+      
+      const response = result.response;
+      console.log('✅ [EnhancedAI] Response received');
+      console.log('� [EnhancedAI] Raw response:', JSON.stringify(response, null, 2));
+
+      // Check if response has function calls
+      let functionCalls: any[] = [];
+      try {
+        functionCalls = response.functionCalls() || [];
+        console.log('� [EnhancedAI] Function calls:', functionCalls);
+      } catch (e) {
+        console.log('⚠️ [EnhancedAI] No function calls or error getting them:', e);
+      }
+      
+      let functionResults: FunctionCallResult[] = [];
+      let finalContent = '';
+
+      if (functionCalls && functionCalls.length > 0) {
+        console.log('🔧 [EnhancedAI] Function calls detected:', functionCalls.length, 'calls');
+        
+        // Execute function calls sequentially
+        for (let i = 0; i < functionCalls.length; i++) {
+          const functionCall = functionCalls[i];
+          console.log(`🎯 [EnhancedAI] Executing function ${i + 1}/${functionCalls.length}:`, functionCall.name);
+          
+          try {
+            const result = await this.executeFunctionCall(functionCall);
+            console.log(`✅ [EnhancedAI] Function ${functionCall.name} completed:`, result);
+            functionResults.push(result);
+          } catch (error) {
+            console.error(`❌ [EnhancedAI] Function ${functionCall.name} failed:`, error);
+            functionResults.push({
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+
+        // Send function results back to model with timeout
+        console.log('📤 [EnhancedAI] Sending function results back to AI...');
+        const functionResponseParts = functionResults.map((result, index) => ({
+          functionResponse: {
+            name: functionCalls[index].name,
+            response: result
+          }
+        }));
+        console.log('📦 [EnhancedAI] Function response parts:', JSON.stringify(functionResponseParts, null, 2));
+
+        try {
+          console.log('⏳ [EnhancedAI] Waiting for AI follow-up response (with 15s timeout)...');
+          
+          // Create a timeout promise
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('AI response timeout after 15 seconds')), 15000);
+          });
+          
+          // Race between the actual response and timeout
+          const followUpResult = await Promise.race([
+            chat.sendMessage(functionResponseParts),
+            timeoutPromise
+          ]) as any;
+          
+          console.log('✅ [EnhancedAI] Follow-up result received');
+          
+          const followUpResponse = followUpResult.response;
+          console.log('✅ [EnhancedAI] Follow-up response received');
+          
+          finalContent = followUpResponse.text();
+          console.log('📝 [EnhancedAI] Final content from AI:', finalContent);
+          
+          // If AI returns empty content, generate manual response
+          if (!finalContent || finalContent.trim() === '') {
+            console.log('⚠️ [EnhancedAI] AI returned empty content, generating manual response');
+            finalContent = this.generateResponseFromResults(functionResults, functionCalls);
+          }
+        } catch (timeoutError) {
+          console.error('⏱️ [EnhancedAI] Timeout or error getting follow-up:', timeoutError);
+          // Generate a manual response based on function results
+          finalContent = this.generateResponseFromResults(functionResults, functionCalls);
+          console.log('📝 [EnhancedAI] Generated manual response:', finalContent);
+        }
+      } else {
+        console.log('💬 [EnhancedAI] No function calls, getting direct response');
+        try {
+          finalContent = response.text();
+          console.log('📝 [EnhancedAI] Direct response:', finalContent);
+        } catch (e) {
+          console.error('❌ [EnhancedAI] Error getting text from response:', e);
+          finalContent = 'I received your message but had trouble generating a response. Please try again.';
+        }
+      }
+
+      const aiMessage: AIMessage = {
+        id: Date.now().toString(),
+        content: finalContent,
+        type: 'ai',
+        timestamp: new Date(),
+        functionCalls: functionCalls || [],
+        functionResults
+      };
+
+      console.log('✅ [EnhancedAI] AI message created:', aiMessage);
+      return aiMessage;
+
+    } catch (error) {
+      console.error('❌ [EnhancedAI] Error sending message:', error);
+      console.error('❌ [EnhancedAI] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      throw error;
+    }
+  }
+
+  private generateResponseFromResults(results: FunctionCallResult[], calls: any[]): string {
+    console.log('🔨 [EnhancedAI] Generating manual response from results');
+    
+    let response = '';
+    const successfulOps: string[] = [];
+    const failedOps: string[] = [];
+
+    results.forEach((result, index) => {
+      const callName = calls[index]?.name || 'unknown';
+      if (result.success) {
+        successfulOps.push(result.message || callName);
+      } else {
+        failedOps.push(`${callName}: ${result.error}`);
+      }
+    });
+
+    if (successfulOps.length > 0) {
+      response += '✅ Successfully completed:\n' + successfulOps.map(op => `• ${op}`).join('\n');
+    }
+
+    if (failedOps.length > 0) {
+      if (response) response += '\n\n';
+      response += '❌ Failed operations:\n' + failedOps.map(op => `• ${op}`).join('\n');
+    }
+
+    if (!response) {
+      response = 'I processed your request but couldn\'t generate a detailed response. Please check if the changes were applied.';
+    }
+
+    return response;
+  }
+
+  private async executeFunctionCall(functionCall: FunctionCall): Promise<FunctionCallResult> {
+    console.log(`🚀 [EnhancedAI] executeFunctionCall: ${functionCall.name}`);
+    console.log(`📋 [EnhancedAI] Function call RAW object:`, functionCall);
+    console.log(`📋 [EnhancedAI] Function call keys:`, Object.keys(functionCall));
+    
+    // Try to extract parameters from different possible properties
+    let params = functionCall.parameters || functionCall.args || (functionCall as any).arguments || {};
+    console.log(`📋 [EnhancedAI] Extracted parameters:`, params);
+    console.log(`📋 [EnhancedAI] Parameters type:`, typeof params);
+    console.log(`📋 [EnhancedAI] Parameters stringified:`, JSON.stringify(params));
+
+    try {
+      let result: FunctionCallResult;
+      
+      switch (functionCall.name) {
+        case 'get_project_data':
+          console.log('📊 [EnhancedAI] Calling getProjectData...');
+          result = await this.getProjectData();
+          console.log('✅ [EnhancedAI] getProjectData completed:', result);
+          return result;
+        
+        case 'create_list':
+          console.log('📝 [EnhancedAI] Calling createList with params:', params);
+          result = await this.createList(params);
+          console.log('✅ [EnhancedAI] createList completed:', result);
+          return result;
+        
+        case 'update_list':
+          console.log('✏️ [EnhancedAI] Calling updateList...');
+          result = await this.updateList(functionCall.parameters);
+          console.log('✅ [EnhancedAI] updateList completed:', result);
+          return result;
+        
+        case 'delete_list':
+          console.log('🗑️ [EnhancedAI] Calling deleteList...');
+          result = await this.deleteList(functionCall.parameters);
+          console.log('✅ [EnhancedAI] deleteList completed:', result);
+          return result;
+        
+        case 'create_task':
+          console.log('📝 [EnhancedAI] Calling createTask...');
+          result = await this.createTask(functionCall.parameters);
+          console.log('✅ [EnhancedAI] createTask completed:', result);
+          return result;
+        
+        case 'update_task':
+          console.log('✏️ [EnhancedAI] Calling updateTask...');
+          result = await this.updateTask(functionCall.parameters);
+          console.log('✅ [EnhancedAI] updateTask completed:', result);
+          return result;
+        
+        case 'delete_task':
+          console.log('🗑️ [EnhancedAI] Calling deleteTask...');
+          result = await this.deleteTask(functionCall.parameters);
+          console.log('✅ [EnhancedAI] deleteTask completed:', result);
+          return result;
+        
+        case 'move_task':
+          console.log('🔄 [EnhancedAI] Calling moveTask...');
+          result = await this.moveTask(functionCall.parameters);
+          console.log('✅ [EnhancedAI] moveTask completed:', result);
+          return result;
+        
+        default:
+          console.error(`❌ [EnhancedAI] Unknown function: ${functionCall.name}`);
+          return {
+            success: false,
+            error: `Unknown function: ${functionCall.name}`
+          };
+      }
+    } catch (error) {
+      console.error(`❌ [EnhancedAI] Error executing ${functionCall.name}:`, error);
+      console.error(`❌ [EnhancedAI] Error details:`, error instanceof Error ? error.message : error);
+      console.error(`❌ [EnhancedAI] Error stack:`, error instanceof Error ? error.stack : 'No stack');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  private async getProjectData(): Promise<FunctionCallResult> {
+    console.log(`🔍 [EnhancedAI] getProjectData started for project: ${this.projectUid}`);
+    try {
+      console.log('📡 [EnhancedAI] Calling apiService.getProject...');
+      
+      // Add timeout to API call
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('API timeout after 10 seconds')), 10000);
+      });
+      
+      const apiPromise = apiService.getProject(this.projectUid);
+      
+      const response = await Promise.race([apiPromise, timeoutPromise]) as any;
+      console.log('✅ [EnhancedAI] API response received:', response);
+      
+      this.currentProjectData = response.data;
+      console.log('💾 [EnhancedAI] Project data cached:', {
+        name: response.data.name,
+        lists: response.data.lists?.length || 0,
+        totalTasks: response.data.lists?.reduce((sum, list) => sum + (list.tasks?.length || 0), 0) || 0
+      });
+      
+      // Return simplified data structure to avoid issues
+      const simplifiedData = {
+        project_name: response.data.name,
+        lists: response.data.lists?.map((list: any) => ({
+          list_uid: list.list_uid,
+          name: list.name,
+          color: list.color,
+          task_count: list.tasks?.length || 0,
+          tasks: list.tasks?.map((task: any) => ({
+            task_uid: task.task_uid,
+            title: task.title,
+            status: task.status,
+            priority: task.priority
+          })) || []
+        })) || []
+      };
+      
+      const result = {
+        success: true,
+        data: simplifiedData,
+        message: `Project "${response.data.name}" has ${response.data.lists?.length || 0} lists`
+      };
+      console.log('✅ [EnhancedAI] getProjectData returning:', result.message);
+      return result;
+    } catch (error) {
+      console.error('❌ [EnhancedAI] getProjectData failed:', error);
+      console.error('❌ [EnhancedAI] Error details:', error instanceof Error ? error.message : error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get project data'
+      };
+    }
+  }
+
+  private async createList(params: any): Promise<FunctionCallResult> {
+    console.log('📝 [EnhancedAI] createList called with params:', params);
+    console.log('📝 [EnhancedAI] params type:', typeof params);
+    console.log('📝 [EnhancedAI] params is null?', params === null);
+    console.log('📝 [EnhancedAI] params is undefined?', params === undefined);
+    
+    try {
+      // Validate params
+      if (!params || typeof params !== 'object') {
+        console.error('❌ [EnhancedAI] Invalid params object:', params);
+        return {
+          success: false,
+          error: 'Invalid parameters provided'
+        };
+      }
+
+      if (!params.name) {
+        console.error('❌ [EnhancedAI] Missing list name');
+        return {
+          success: false,
+          error: 'List name is required'
+        };
+      }
+
+      // Get position - default to 0 if not specified
+      let position = 0;
+      
+      if (params.position !== undefined && params.position !== null) {
+        position = params.position;
+        console.log('📊 [EnhancedAI] Using provided position:', position);
+      } else {
+        // Try to get current project data to calculate position
+        try {
+          if (!this.currentProjectData) {
+            console.log('📡 [EnhancedAI] Fetching project data for position calculation...');
+            const projectResponse = await apiService.getProject(this.projectUid);
+            this.currentProjectData = projectResponse.data;
+          }
+          position = this.currentProjectData?.lists?.length || 0;
+          console.log('📊 [EnhancedAI] Calculated position from project data:', position);
+        } catch (err) {
+          console.warn('⚠️ [EnhancedAI] Could not get project data for position, using 0:', err);
+          position = 0;
+        }
+      }
+
+      const listRequest: ListRequest = {
+        project_uid: this.projectUid,
+        name: params.name,
+        color: params.color || '#3B82F6', // Default blue color
+        position
+      };
+
+      console.log('📤 [EnhancedAI] Sending createList request:', listRequest);
+      const response = await apiService.createList(listRequest);
+      console.log('✅ [EnhancedAI] List created successfully:', response.data);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "List Created",
+        description: `Successfully created "${params.name}" list`,
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: `Created list "${params.name}"`
+      };
+    } catch (error) {
+      console.error('❌ [EnhancedAI] createList failed:', error);
+      console.error('❌ [EnhancedAI] Error stack:', error instanceof Error ? error.stack : 'No stack');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create list'
+      };
+    }
+  }
+
+  private async updateList(params: any): Promise<FunctionCallResult> {
+    try {
+      const updateData: any = {};
+      if (params.name) updateData.name = params.name;
+      if (params.color) updateData.color = params.color;
+      if (params.position !== undefined) updateData.position = params.position;
+
+      const response = await apiService.partialUpdateList(params.list_uid, updateData);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "List Updated",
+        description: `Successfully updated the list`,
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: `Updated list successfully`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update list'
+      };
+    }
+  }
+
+  private async deleteList(params: any): Promise<FunctionCallResult> {
+    try {
+      await apiService.deleteList(params.list_uid);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "List Deleted",
+        description: `Successfully deleted the list`,
+      });
+
+      return {
+        success: true,
+        message: `Deleted list successfully`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete list'
+      };
+    }
+  }
+
+  private async createTask(params: any): Promise<FunctionCallResult> {
+    try {
+      const taskRequest: TaskRequest = {
+        list_uid: params.list_uid,
+        title: params.title,
+        description: params.description || null,
+        priority: params.priority || 'medium',
+        status: params.status || 'todo',
+        color: params.color || '#6B7280', // Default gray color
+        position: params.position || null,
+        is_completed: params.is_completed || false,
+        due_date: params.due_date || null
+      };
+
+      const response = await apiService.createTask(taskRequest);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "Task Created",
+        description: `Successfully created "${params.title}" task`,
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: `Created task "${params.title}"`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create task'
+      };
+    }
+  }
+
+  private async updateTask(params: any): Promise<FunctionCallResult> {
+    try {
+      const updateData: any = {};
+      if (params.title) updateData.title = params.title;
+      if (params.description !== undefined) updateData.description = params.description;
+      if (params.priority) updateData.priority = params.priority;
+      if (params.status) updateData.status = params.status;
+      if (params.color) updateData.color = params.color;
+      if (params.position !== undefined) updateData.position = params.position;
+      if (params.is_completed !== undefined) updateData.is_completed = params.is_completed;
+      if (params.due_date !== undefined) {
+        updateData.due_date = params.due_date;
+      }
+
+      const response = await apiService.partialUpdateTask(params.task_uid, updateData);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "Task Updated",
+        description: `Successfully updated the task`,
+      });
+
+      return {
+        success: true,
+        data: response.data,
+        message: `Updated task successfully`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update task'
+      };
+    }
+  }
+
+  private async deleteTask(params: any): Promise<FunctionCallResult> {
+    try {
+      await apiService.deleteTask(params.task_uid);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "Task Deleted",
+        description: `Successfully deleted the task`,
+      });
+
+      return {
+        success: true,
+        message: `Deleted task successfully`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete task'
+      };
+    }
+  }
+
+  private async moveTask(params: any): Promise<FunctionCallResult> {
+    try {
+      await apiService.moveTask(params.task_uid, params.target_list_uid);
+      
+      // Refresh project data
+      await this.getProjectData();
+
+      toast({
+        title: "Task Moved",
+        description: `Successfully moved the task`,
+      });
+
+      return {
+        success: true,
+        message: `Moved task to target list successfully`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to move task'
+      };
+    }
+  }
+
+  // Get current project data without making API call
+  getCurrentProjectData(): ProjectWithLists | null {
+    return this.currentProjectData;
+  }
+}
