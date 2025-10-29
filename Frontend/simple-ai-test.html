@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple AI Function Calling Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .log {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .error { color: #ff6b6b; }
+        .success { color: #51cf66; }
+        .info { color: #74c0fc; }
+    </style>
+</head>
+<body>
+    <h1>🤖 AI Function Calling Test</h1>
+    
+    <div class="test-section">
+        <h2>Test AI Function Calling</h2>
+        <p>This will test if our AI can properly call the create_project function.</p>
+        <button onclick="runFunctionCallingTest()">🧪 Test Function Calling</button>
+        <button onclick="clearResults()">🗑️ Clear Log</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results" class="log">Click the test button to start...\n</div>
+    </div>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from 'https://esm.run/@google/generative-ai';
+
+        const API_KEY = 'AIzaSyAjCLlJHuJymK3q94RRJvGk52qIlBXAUwg';
+        const genAI = new GoogleGenerativeAI(API_KEY);
+
+        function log(message, type = 'info') {
+            const resultsElement = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            resultsElement.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            resultsElement.scrollTop = resultsElement.scrollHeight;
+        }
+
+        // Function declaration for project creation
+        const createProjectFunction = {
+            name: 'create_project',
+            description: 'Creates a new project with organized task lists. Use this when user wants to create a project.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    project_name: {
+                        type: 'string',
+                        description: 'Name of the project'
+                    },
+                    project_description: {
+                        type: 'string',
+                        description: 'Brief description of the project'
+                    },
+                    lists: {
+                        type: 'array',
+                        description: 'Task lists for the project',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                name: {
+                                    type: 'string',
+                                    description: 'Name of the task list'
+                                },
+                                tasks: {
+                                    type: 'array',
+                                    description: 'Tasks in this list',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            title: {
+                                                type: 'string',
+                                                description: 'Task title'
+                                            },
+                                            description: {
+                                                type: 'string',
+                                                description: 'Task description'
+                                            }
+                                        },
+                                        required: ['title']
+                                    }
+                                }
+                            },
+                            required: ['name', 'tasks']
+                        }
+                    }
+                },
+                required: ['project_name', 'project_description', 'lists']
+            }
+        };
+
+        window.runFunctionCallingTest = async function() {
+            try {
+                log('🚀 Starting AI Function Calling Test...', 'info');
+                
+                const model = genAI.getGenerativeModel({ 
+                    model: 'gemini-2.5-flash',
+                    tools: [{
+                        functionDeclarations: [createProjectFunction]
+                    }]
+                });
+
+                const testPrompt = `I want to create a mobile app project for a fitness tracker. 
+
+Please create a complete project structure with these features:
+- User authentication and profiles
+- Workout tracking and logging
+- Progress analytics and charts
+- Social features and challenges
+- Settings and preferences
+
+Organize this into phases like Planning, Development, Testing, and Deployment with specific tasks for each phase.`;
+
+                log('📝 Sending request to Gemini AI...', 'info');
+                log(`💬 Prompt: ${testPrompt.substring(0, 100)}...`, 'info');
+
+                const result = await model.generateContent(testPrompt);
+                const response = result.response;
+
+                log('📨 Response received from AI!', 'success');
+
+                // Check for function calls
+                const functionCalls = response.functionCalls?.();
+                
+                if (functionCalls && functionCalls.length > 0) {
+                    log('🎉 SUCCESS: Function calling worked!', 'success');
+                    log(`📞 Number of function calls: ${functionCalls.length}`, 'success');
+                    
+                    functionCalls.forEach((functionCall, index) => {
+                        log(`\n🔧 Function Call ${index + 1}:`, 'info');
+                        log(`   Name: ${functionCall.name}`, 'info');
+                        log(`   Arguments:`, 'info');
+                        log(`${JSON.stringify(functionCall.args, null, 4)}`, 'info');
+                    });
+                    
+                    // Simulate calling the backend
+                    log('\n🔄 Would now call backend API with these parameters...', 'info');
+                    
+                } else {
+                    log('❌ NO FUNCTION CALLS DETECTED', 'error');
+                    log('📄 AI gave text response instead:', 'error');
+                    log(`${response.text()}`, 'error');
+                }
+
+            } catch (error) {
+                log(`💥 ERROR: ${error.message}`, 'error');
+                log(`🔍 Full error details: ${JSON.stringify(error, null, 2)}`, 'error');
+            }
+        };
+
+        window.clearResults = function() {
+            document.getElementById('results').innerHTML = 'Log cleared. Ready for new test...\n';
+        };
+
+        log('✅ Test environment ready!', 'success');
+        
+    </script>
+</body>
+</html>
