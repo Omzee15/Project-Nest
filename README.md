@@ -1,6 +1,12 @@
-# 🚀 ProjectNest
+# 🚀 Projec[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-contributing)
 
-<div align="center">
+</div>
+
+---
+
+## 🎯 What is ProjectNest?
+
+ProjectNest is an intelligent project management platform that combines traditional task management with cutting-edge AI capabilities. It's designed to help teams brainstorm, plan, organize, and execute projects seamlessly—all in one place.="center">
   
 **A modern, AI-powered project management platform that helps teams collaborate, plan, and execute projects efficiently.**
 
@@ -15,7 +21,15 @@
 
 ---
 
-## 🎯 What is ProjectNest?
+## � Demo
+
+https://github.com/Omzee15/projectNest/raw/cd/Screen%20Recording%202025-11-09%20at%2008.36.59.mov
+
+*Watch ProjectNest in action - see how AI assistance integrates seamlessly with project management*
+
+---
+
+## �🎯 What is ProjectNest?
 
 ProjectNest is an intelligent project management platform that combines traditional task management with cutting-edge AI capabilities. It's designed to help teams brainstorm, plan, organize, and execute projects seamlessly—all in one place.
 
@@ -92,6 +106,27 @@ ProjectNest is an intelligent project management platform that combines traditio
 - PostgreSQL 14+
 - Google Gemini API key
 
+### Database Setup
+
+The database schema is provided in `schema.sql`. To set up your database:
+
+```bash
+# Create database
+createdb projectnest
+
+# Import schema
+psql -d projectnest -f schema.sql
+```
+
+The schema includes:
+- 15+ tables for comprehensive project management
+- Foreign key relationships and constraints
+- Indexes for optimized query performance
+- Automatic timestamp triggers
+- Complete documentation
+
+You can also view the database structure in DBML format: [`dbml.sql`](https://github.com/Omzee15/projectNest/blob/cd/dbml.sql)
+
 ### Quick Start
 
 1. **Clone the repository**
@@ -131,8 +166,21 @@ VITE_GEMINI_API_KEY=your_gemini_api_key_here
 
 3. **Run the setup script**
 ```bash
-chmod +x start-projectnest.sh
+chmod +x start-projectnest.sh setup-alias.sh
 ./start-projectnest.sh
+```
+
+4. **(Optional) Create a shortcut command**
+
+To create a `run-projectNest` command that you can use from anywhere:
+```bash
+./setup-alias.sh
+source ~/.zshrc  # or source ~/.bashrc for bash users
+```
+
+Now you can start ProjectNest from anywhere with:
+```bash
+run-projectNest
 ```
 
 Or manually:
@@ -198,6 +246,11 @@ bun dev      # or npm run dev
 
 ```
 projectNest/
+├── schema.sql               # PostgreSQL database schema (ready to import)
+├── dbml.sql                 # Database schema in DBML format (for visualization)
+├── start-projectnest.sh     # Quick start script for both servers
+├── setup-alias.sh           # Creates 'run-projectNest' command shortcut
+│
 ├── Backend/
 │   ├── cmd/server/          # Application entry point
 │   ├── internal/
@@ -255,6 +308,36 @@ projectNest/
 ### Canvas & Collaboration
 - `GET /api/canvas/:projectUid` - Get canvas data
 - `PUT /api/canvas/:projectUid` - Update canvas
+
+---
+
+## 🗄️ Database Schema
+
+ProjectNest uses PostgreSQL with a comprehensive relational schema. The complete schema is available in [`schema.sql`](https://github.com/Omzee15/projectNest/blob/cd/schema.sql).
+
+### Key Tables:
+- **users** - User accounts and authentication
+- **projects** - Project metadata and settings
+- **lists & tasks** - Kanban-style task management
+- **notes & note_folder** - Hierarchical note organization
+- **canvas & brainstorm_canvas** - Visual brainstorming data
+- **chat_conversations & chat_messages** - AI chat history
+- **workspace** - Multi-project organization
+
+### Features:
+✅ Foreign key relationships with cascading deletes  
+✅ UUID-based unique identifiers for security  
+✅ Automatic timestamp tracking with triggers  
+✅ Optimized indexes for query performance  
+✅ JSONB fields for flexible data storage  
+✅ Comprehensive table and column documentation  
+
+**Quick Import:**
+```bash
+psql -d projectnest -f schema.sql
+```
+
+For visual representation, see [`dbml.sql`](https://github.com/Omzee15/projectNest/blob/cd/dbml.sql) (can be used with [dbdiagram.io](https://dbdiagram.io/)).
 
 ---
 
