@@ -77,11 +77,19 @@ ProjectNest is an intelligent project management platform that combines traditio
 
 ## 🎬 Demo
 
-See ProjectNest in action! This demo showcases the key features and workflow of the platform:
+<div align="center">
 
-🎥 **[Watch Demo Video](https://drive.google.com/file/d/1LlupyiBekqpISyifMfQsYOouGi35Pg9f/view?usp=share_link)**
+[![ProjectNest Demo Video](https://img.shields.io/badge/🎥%20Watch%20Demo%20Video-Click%20to%20Play-blue?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1LlupyiBekqpISyifMfQsYOouGi35Pg9f/view?usp=share_link)
 
-*The demo covers AI-powered project creation, task management, visual collaboration tools, and the integrated chat assistant.*
+*Click above to see ProjectNest in action!*
+
+</div>
+
+**What you'll see in the demo:**
+- 🤖 AI-powered project creation from natural language
+- 📋 Interactive Kanban task management  
+- 🎨 Visual collaboration tools and canvas
+- 💬 Integrated AI chat assistant
 
 ---
 
