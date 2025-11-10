@@ -9,7 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-contributing)
+[Features](#-features) • [Demo](#-demo) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-contributing)
 
 </div>
 
@@ -72,6 +72,16 @@ ProjectNest is an intelligent project management platform that combines traditio
 - **Database Viewer**: Built-in database explorer with DBML visualization
 - **API Documentation**: RESTful API with clear endpoints and responses
 - **Migration System**: Database migration support for schema evolution
+
+---
+
+## 🎬 Demo
+
+See ProjectNest in action! This demo showcases the key features and workflow of the platform:
+
+🎥 **[Watch Demo Video](https://drive.google.com/file/d/1LlupyiBekqpISyifMfQsYOouGi35Pg9f/view?usp=share_link)**
+
+*The demo covers AI-powered project creation, task management, visual collaboration tools, and the integrated chat assistant.*
 
 ---
 
