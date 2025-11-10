@@ -1,5 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import SonnerToaster from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -44,32 +44,35 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
-            <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
-            <Route path="/db-viewer" element={<AuthGuard><DBViewer /></AuthGuard>} />
-            <Route path="/flowchart" element={<AuthGuard><FlowchartViewer /></AuthGuard>} />
-            <Route path="/project/:projectId" element={<AuthGuard><ProjectDashboard /></AuthGuard>} />
-            <Route path="/project/:projectUid/brainstorm" element={<AuthGuard><ProjectBrainstorm /></AuthGuard>} />
-            <Route path="/project/:projectUid/canvas" element={<AuthGuard><ProjectCanvas /></AuthGuard>} />
-            <Route path="/project/:projectUid/notes" element={<AuthGuard><ProjectNotes /></AuthGuard>} />
-            <Route path="/project/:projectUid/dev-ai" element={<AuthGuard><ProjectDevAI /></AuthGuard>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <div>
+              <Toaster />
+              <SonnerToaster />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/projects" element={<AuthGuard><Projects /></AuthGuard>} />
+                <Route path="/project/:id" element={<AuthGuard><ProjectDashboard /></AuthGuard>} />
+                <Route path="/project/:id/brainstorm" element={<AuthGuard><ProjectBrainstorm /></AuthGuard>} />
+                <Route path="/project/:id/canvas" element={<AuthGuard><ProjectCanvas /></AuthGuard>} />
+                <Route path="/project/:id/notes" element={<AuthGuard><ProjectNotes /></AuthGuard>} />
+                <Route path="/project/:id/devai" element={<AuthGuard><ProjectDevAI /></AuthGuard>} />
+                <Route path="/project/:id/db" element={<AuthGuard><DBViewer /></AuthGuard>} />
+                <Route path="/project/:id/flowchart" element={<AuthGuard><FlowchartViewer /></AuthGuard>} />
+                <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
