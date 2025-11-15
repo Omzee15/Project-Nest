@@ -1,0 +1,20 @@
+# Ignore development files
+.env
+.env.local
+.env.development
+.git
+.gitignore
+README.md
+*.md
+
+# Ignore build artifacts
+main
+server
+projectnest-server
+
+# Ignore logs
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

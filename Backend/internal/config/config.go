@@ -7,12 +7,13 @@ import (
 
 type Config struct {
 	// Database
-	DBHost     string
-	DBPort     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
+	DatabaseURL string // For production (Render) - full PostgreSQL URL
+	DBHost      string
+	DBPort      string
+	DBUser      string
+	DBPassword  string
+	DBName      string
+	DBSSLMode   string
 
 	// Server
 	ServerPort string
@@ -32,15 +33,16 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		// Database
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "password"),
-		DBName:     getEnv("DB_NAME", "lucid_lists"),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
+		DatabaseURL: getEnv("DATABASE_URL", ""), // For production (Render)
+		DBHost:      getEnv("DB_HOST", "localhost"),
+		DBPort:      getEnv("DB_PORT", "5432"),
+		DBUser:      getEnv("DB_USER", "postgres"),
+		DBPassword:  getEnv("DB_PASSWORD", "password"),
+		DBName:      getEnv("DB_NAME", "lucid_lists"),
+		DBSSLMode:   getEnv("DB_SSLMODE", "disable"),
 
 		// Server
-		ServerPort: getEnv("SERVER_PORT", "8080"),
+		ServerPort: getEnv("PORT", "8080"),
 		ServerHost: getEnv("SERVER_HOST", "localhost"),
 
 		// Application
@@ -63,7 +65,9 @@ func getEnv(key, defaultValue string) string {
 }
 
 func getCORSOrigins() []string {
-	origins := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:8082,http://localhost:8081")
+	// Default to common localhost ports for development
+	defaultOrigins := "http://localhost:5173,http://localhost:3000,http://localhost:8080,http://localhost:8082,http://localhost:8081"
+	origins := getEnv("CORS_ALLOWED_ORIGINS", defaultOrigins)
 	frontendPort := getEnv("FRONTEND_PORT", "")
 
 	originList := strings.Split(origins, ",")

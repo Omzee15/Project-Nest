@@ -7,12 +7,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"lucid-lists-backend/internal/config"
+	"lucid-lists-backend/pkg/logger"
 )
 
 func Connect(cfg *config.Config) (*pgxpool.Pool, error) {
-	// Build connection string
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
+	var dsn string
+
+	// Use DATABASE_URL if available (for production/Render), otherwise build from components
+	log := logger.WithComponent("database")
+	if cfg.DatabaseURL != "" {
+		dsn = cfg.DatabaseURL
+		log.Info("Using DATABASE_URL for database connection")
+	} else {
+		// Build connection string from individual components (for local development)
+		dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
+		log.Info("Using individual DB components for database connection")
+	}
 
 	// Configure connection pool
 	config, err := pgxpool.ParseConfig(dsn)
