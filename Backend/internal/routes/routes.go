@@ -19,6 +19,18 @@ func SetupRoutes(r *gin.Engine, projectHandler *handlers.ProjectHandler, listHan
 	// Add middleware
 	r.Use(middleware.RequestLogging())
 
+	// Root route for service info
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"service":     "ProjectNest Backend API",
+			"status":      "running",
+			"version":     "1.0.0",
+			"health_url":  "/health",
+			"api_prefix":  "/api",
+			"timestamp":   time.Now().UTC(),
+		})
+	})
+
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		logger.WithComponent("health").Info("Health check accessed")
